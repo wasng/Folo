@@ -39,15 +39,17 @@ import { DiscoverInboxList } from "./DiscoverInboxList"
 import { DiscoverTransform } from "./DiscoverTransform"
 import { DiscoverUser } from "./DiscoverUser"
 import { FeedForm } from "./FeedForm"
-
-const isFeedLikeUrl = (value: string) => {
-  const trimmed = value.trim()
-  return /^(?:https?:\/\/|rsshub:\/\/|folo:\/\/|follow:\/\/)/.test(trimmed)
-}
+import {
+  isFeedLikeUrl,
+  isWebsiteUrl,
+  normalizeDiscoverInput,
+  parseWebsiteUrl,
+} from "./website-feed"
+import { WebsiteFeedPreview } from "./WebsiteFeedPreview"
 
 // Auto-detect input type
 function detectInputType(value: string): "rss" | "rsshub" | "search" {
-  const trimmed = value.trim()
+  const trimmed = normalizeDiscoverInput(value)
   if (trimmed.startsWith("rsshub://")) {
     return "rsshub"
   }
@@ -140,6 +142,7 @@ export function UnifiedDiscoverForm() {
 
   const mutation = useMutation({
     mutationFn: async ({ keyword, target }: { keyword: string; target: "feeds" | "lists" }) => {
+      keyword = normalizeDiscoverInput(keyword)
       const inputType = detectInputType(keyword)
 
       // For RSS/RSSHub, validate and show feed form modal directly
@@ -148,9 +151,15 @@ export function UnifiedDiscoverForm() {
         if (!validated.success) {
           throw new Error("Invalid RSS URL")
         }
+        if (isWebsiteUrl(keyword)) parseWebsiteUrl(keyword)
         present({
           title: t("feed_form.add_feed"),
-          content: () => <FeedForm url={keyword} onSuccess={dismissAll} />,
+          content: () =>
+            isWebsiteUrl(keyword) ? (
+              <WebsiteFeedPreview url={keyword} onSuccess={dismissAll} />
+            ) : (
+              <FeedForm url={keyword} onSuccess={dismissAll} />
+            ),
         })
         return []
       }
@@ -466,6 +475,11 @@ export function UnifiedDiscoverForm() {
       </Form>
 
       <div className="mt-8 w-full max-w-2xl">
+        {mutation.error && (
+          <p role="alert" className="mb-4 text-sm text-red">
+            {mutation.error.message}
+          </p>
+        )}
         {(mutation.isSuccess || !!discoverSearchData?.length) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-text-secondary">
             {t("discover.search.results", { count: discoverSearchData?.length || 0 })}

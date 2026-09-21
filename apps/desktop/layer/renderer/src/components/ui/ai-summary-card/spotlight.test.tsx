@@ -14,7 +14,7 @@ const { markdownMock } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/atoms/server-configs", () => ({
-  useIsPaymentEnabled: vi.fn(() => false),
+  useIsPaymentEnabled: vi.fn(() => true),
 }))
 
 vi.mock("~/atoms/settings/spotlight", () => ({
@@ -104,5 +104,16 @@ describe("AISummaryCardBase spotlight", () => {
       }),
       undefined,
     )
+  })
+
+  test("shows provider billing errors without a Folo upgrade prompt", async () => {
+    ;({ container, root } = await renderSummary(
+      <AISummaryCardBase
+        error={new Error("BYOK (402): Provider credits exhausted")}
+        showErrorMessage
+      />,
+    ))
+    expect(container.textContent).toContain("Provider credits exhausted")
+    expect(container.textContent).not.toContain("ai.summary_upgrade_required_title")
   })
 })

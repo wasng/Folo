@@ -93,10 +93,12 @@ export const FeedForm: Component<{
   defaultValues?: FeedFormDataValuesType
 
   onSuccess?: () => void
-}> = ({ id: _id, defaultValues, url, onSuccess }) => {
+  showErrorDetails?: boolean
+}> = ({ id: _id, defaultValues, url, onSuccess, showErrorDetails = false }) => {
   const queryParams = { id: _id, url }
 
   const feedQuery = useFeedQuery(queryParams)
+  const { error: feedError, refetch: refetchFeed } = feedQuery
 
   const id = feedQuery.data?.feed.id || _id
   const feedFromStore = useFeedByIdOrUrl({
@@ -170,11 +172,19 @@ export const FeedForm: Component<{
               </div>
             )
           }
-          case !!feedQuery.error: {
+          case !!feedError: {
             return (
               <div className="center grow flex-col gap-3">
                 <i className="i-mgc-close-cute-re size-7 text-red" />
                 <p>{t("feed_form.error_fetching_feed")}</p>
+                {showErrorDetails && (
+                  <>
+                    <p className="break-all text-sm text-text-secondary">{feedError.message}</p>
+                    <Button variant="outline" onClick={() => refetchFeed()}>
+                      {t("discover.website.retry")}
+                    </Button>
+                  </>
+                )}
               </div>
             )
           }
@@ -193,7 +203,9 @@ export const FeedForm: Component<{
         feedQuery.data?.analytics,
         feedQuery.data?.entries,
         feedQuery.data?.subscription,
-        feedQuery.error,
+        feedError,
+        refetchFeed,
+        showErrorDetails,
         feedQuery.isLoading,
         id,
         isInModal,
