@@ -35,6 +35,7 @@ interface AISummaryCardBaseProps {
   onAskAI?: () => void
 
   error?: Error | null
+  showErrorMessage?: boolean
 }
 
 const DefaultLoadingState = () => (
@@ -107,6 +108,7 @@ export const AISummaryCardBase: React.FC<AISummaryCardBaseProps> = ({
   showAskAIButton = false,
   onAskAI,
   error,
+  showErrorMessage = false,
 }) => {
   const { t } = useTranslation("app")
   const aiEnabled = useFeature("ai")
@@ -229,7 +231,9 @@ export const AISummaryCardBase: React.FC<AISummaryCardBaseProps> = ({
             shouldSuggestUpgrade
           />
         ) : (
-          <DefaultEmptyState message={t("ai.summary_not_available")} />
+          <DefaultEmptyState
+            message={(showErrorMessage && error?.message) || t("ai.summary_not_available")}
+          />
         )}
       </AutoResizeHeight>
 

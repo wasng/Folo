@@ -12,6 +12,8 @@ import type { ByokProviderName, UserByokProviderConfig } from "@follow/shared/se
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { BYOK_BASE_URLS } from "~/modules/entry-content/byok-summary"
+
 import { PROVIDER_OPTIONS } from "./constants"
 
 interface ByokProviderModalContentProps {
@@ -39,19 +41,40 @@ export const ByokProviderModalContent = ({
   // Get the first available provider or fallback to the current one
   const defaultProvider = availableProviders[0]?.value ?? provider?.provider ?? "openai"
 
-  const [formData, setFormData] = useState<UserByokProviderConfig>({
+  const getDefaultBaseURL = (p: ByokProviderName) => {
+    return provider?.provider === p ? (provider.baseURL ?? BYOK_BASE_URLS[p]) : BYOK_BASE_URLS[p]
+  }
+
+  const [formData, setFormData] = useState<UserByokProviderConfig>(() => ({
     provider: provider?.provider ?? defaultProvider,
-    baseURL: provider?.baseURL ?? null,
+    baseURL: provider?.baseURL ?? getDefaultBaseURL(provider?.provider ?? defaultProvider),
     apiKey: provider?.apiKey ?? null,
+    model: provider?.model ?? null,
     headers: provider?.headers ?? {},
-  })
+  }))
+
+  const handleProviderChange = (value: ByokProviderName) => {
+    setFormData((prev) => ({
+      ...prev,
+      provider: value,
+      baseURL: getDefaultBaseURL(value),
+      apiKey: null,
+      model: null,
+      headers: {},
+    }))
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.provider) {
+    if (!formData.model?.trim() || (formData.provider !== "ollama" && !formData.apiKey?.trim())) {
       return
     }
-    onSave(formData)
+    onSave({
+      ...formData,
+      baseURL: formData.baseURL?.trim() || null,
+      apiKey: formData.apiKey?.trim() || null,
+      model: formData.model?.trim() || null,
+    })
   }
 
   return (
@@ -61,9 +84,7 @@ export const ByokProviderModalContent = ({
         <Select
           value={formData.provider}
           disabled={availableProviders.length === 0}
-          onValueChange={(value) =>
-            setFormData({ ...formData, provider: value as ByokProviderName })
-          }
+          onValueChange={(value) => handleProviderChange(value as ByokProviderName)}
         >
           <SelectTrigger id="provider">
             <SelectValue />
@@ -96,10 +117,29 @@ export const ByokProviderModalContent = ({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="model">{t("byok.providers.form.model")}</Label>
+        <Input
+          id="model"
+          type="text"
+          required
+          placeholder={t("byok.providers.form.model_placeholder")}
+          value={formData.model ?? ""}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              model: e.target.value || null,
+            })
+          }
+        />
+        <p className="text-xs text-text-secondary">{t("byok.providers.form.model_help")}</p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="apiKey">{t("byok.providers.form.api_key")}</Label>
         <Input
           id="apiKey"
           type="password"
+          required={formData.provider !== "ollama"}
           placeholder={t("byok.providers.form.api_key_placeholder")}
           value={formData.apiKey ?? ""}
           onChange={(e) =>

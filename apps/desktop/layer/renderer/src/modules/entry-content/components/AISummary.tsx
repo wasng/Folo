@@ -1,5 +1,4 @@
 import { useEntry } from "@follow/store/entry/hooks"
-import { usePrefetchSummary } from "@follow/store/summary/hooks"
 import { useTranslation } from "react-i18next"
 
 import { useShowAISummary } from "~/atoms/ai-summary"
@@ -13,6 +12,8 @@ import {
 import { useActionLanguage } from "~/atoms/settings/general"
 import { AISummaryCardBase } from "~/components/ui/ai-summary-card"
 
+import { useEntrySummary } from "../use-entry-summary"
+
 export function AISummary({ entryId }: { entryId: string }) {
   const { t } = useTranslation()
   const summarySetting = useEntry(entryId, (state) => state.settings?.summary)
@@ -25,7 +26,7 @@ export function AISummary({ entryId }: { entryId: string }) {
   const aiChatPanelStyle = useAIChatPanelStyle()
   const isAIPanelVisible = useAIPanelVisibility()
 
-  const summary = usePrefetchSummary({
+  const summary = useEntrySummary({
     actionLanguage,
     entryId,
     target: isInReadabilitySuccess ? "readabilityContent" : "content",
@@ -56,6 +57,7 @@ export function AISummary({ entryId }: { entryId: string }) {
       showAskAIButton={shouldShowAskAI}
       onAskAI={handleAskAI}
       error={summary.error}
+      showErrorMessage={summary.isByok}
     />
   )
 }
