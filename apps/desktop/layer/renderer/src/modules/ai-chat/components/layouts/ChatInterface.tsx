@@ -36,6 +36,7 @@ import {
   useHasMessages,
   useMessages,
 } from "~/modules/ai-chat/store/hooks"
+import { getSummaryProvider } from "~/modules/entry-content/byok-summary"
 
 import { LexicalAIEditorNodes } from "../../editor"
 import { useAIConfiguration } from "../../hooks/useAIConfiguration"
@@ -258,11 +259,15 @@ const ChatInterfaceContent = ({ centerInputOnEmpty, visualOffsetY }: ChatInterfa
 
   const { data: configuration } = useAIConfiguration()
   const shouldHideResetDetails = userRole ? isFreeRole(userRole) : false
+  // With BYOK the chat never touches Folo's endpoint, so Folo's quota must not
+  // block sending.
+  const isByok = !!getSummaryProvider(useAISettingKey("byok"))
 
   const { isRateLimited, rateLimitMessage } = useRateLimitInfo(
     error,
     configuration,
     shouldHideResetDetails,
+    isByok,
   )
 
   return (
@@ -395,18 +400,21 @@ const useRateLimitInfo = (
   error: Error | string | undefined,
   configuration: ConfigResponse | undefined,
   shouldHideResetDetails: boolean,
+  isByok: boolean,
 ) => {
   const isRateLimited = useMemo(
-    () => computeIsRateLimited(error, configuration),
-    [error, configuration],
+    () => !isByok && computeIsRateLimited(error, configuration),
+    [isByok, error, configuration],
   )
 
   const rateLimitMessage = useMemo(
     () =>
-      computeRateLimitMessage(error, configuration, {
-        hideResetDetails: shouldHideResetDetails,
-      }),
-    [error, configuration, shouldHideResetDetails],
+      isByok
+        ? null
+        : computeRateLimitMessage(error, configuration, {
+            hideResetDetails: shouldHideResetDetails,
+          }),
+    [isByok, error, configuration, shouldHideResetDetails],
   )
 
   return {

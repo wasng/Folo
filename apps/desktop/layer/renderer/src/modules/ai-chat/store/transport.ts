@@ -1,9 +1,13 @@
 import { env } from "@follow/shared/env.desktop"
-import type { HttpChatTransportInitOptions, UIMessageChunk } from "ai"
+import type { ChatTransport, HttpChatTransportInitOptions, UIMessageChunk } from "ai"
 import { HttpChatTransport, parseJsonEventStream, uiMessageChunkSchema } from "ai"
+
+import { getAISettings } from "~/atoms/settings/ai"
+import { getSummaryProvider } from "~/modules/entry-content/byok-summary"
 
 import { getAIModelState } from "../atoms/session"
 import { AIPersistService } from "../services"
+import { createByokChatTransport } from "./byok-transport"
 import type { BizUIMessage } from "./types"
 
 type TitleHandlerPersistOption = boolean | ((title: string) => void | Promise<void>)
@@ -45,7 +49,7 @@ export function createChatTitleHandler(
  * This is used by the AbstractChat instance to communicate with AI providers
  */
 export function createChatTransport({ onValue, titleHandler }: CreateChatTransportOptions = {}) {
-  return new ExtendChatTransport({
+  const httpTransport = new ExtendChatTransport({
     onValue,
     titleHandler,
     // Custom fetch configuration
@@ -59,6 +63,18 @@ export function createChatTransport({ onValue, titleHandler }: CreateChatTranspo
       return selectedModel ? { model: selectedModel } : {}
     },
   })
+  const byokTransport = createByokChatTransport()
+
+  // Resolved per request rather than when the chat instance is built, so
+  // enabling, editing or clearing BYOK takes effect on the next message without
+  // recreating the chat.
+  const selectTransport = (): ChatTransport<BizUIMessage> =>
+    getSummaryProvider(getAISettings().byok) ? byokTransport : httpTransport
+
+  return {
+    sendMessages: (options) => selectTransport().sendMessages(options),
+    reconnectToStream: (options) => selectTransport().reconnectToStream(options),
+  } satisfies ChatTransport<BizUIMessage>
 }
 
 type UIMessageChunkParseResult =
